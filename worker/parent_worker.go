@@ -85,48 +85,8 @@ func (pw *ParentWorker) spawnChildWorkers(maxChildWorkers int) {
 			&pw.ChildWorkerPoolMutex,
 			&pw.ChildWorkerPoolWaitGroup,
 			pw.WorkPool,
+			pw.listName,
 		)
 		go child.Start(i)
-	}
-}
-
-type ChildWorker struct {
-	Ctx       context.Context
-	mutex     *sync.Mutex
-	waitGroup *sync.WaitGroup
-	WorkPool  chan []string
-}
-
-func NewChildWorker(ctx context.Context, mutex *sync.Mutex, waitGroup *sync.WaitGroup, workPool chan []string) *ChildWorker {
-	return &ChildWorker{
-		Ctx:       ctx,
-		mutex:     mutex,
-		waitGroup: waitGroup,
-		WorkPool:  workPool,
-	}
-}
-
-func (cw *ChildWorker) Start(hierarchy int) {
-	defer cw.waitGroup.Done()
-	fmt.Printf("Child Worker %d started and waiting for tasks\n", hierarchy)
-	for {
-		select {
-		case <-cw.Ctx.Done():
-			fmt.Printf("Child Worker %d shutting down\n", hierarchy)
-			return
-
-		case urls, ok := <-cw.WorkPool:
-			if !ok {
-				fmt.Printf("Worker %d: WorkPool closed, shutting down\n", hierarchy)
-				return
-			}
-			fmt.Printf("Worker %d picked up chunk of %d URLs\n", hierarchy, len(urls))
-
-			for _, url := range urls {
-				fmt.Printf("Worker %d processing: %s\n", hierarchy, url)
-			}
-
-			fmt.Printf("Worker %d completed chunk\n", hierarchy)
-		}
 	}
 }
