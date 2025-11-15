@@ -50,7 +50,7 @@ func (cw *ChildWorker) Start() {
 
 func (cw *ChildWorker) Work(url string) {
 	client := &http.Client{
-		Timeout: time.Duration(env.FetchInt("REQUEST_TIMEOUT", 5)) * time.Second,
+		Timeout: time.Duration(env.FetchInt("HTTP_REQUEST_TIMEOUT", 5)) * time.Second,
 	}
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -60,7 +60,12 @@ func (cw *ChildWorker) Work(url string) {
 
 	resp, err := client.Do(request)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("client error: %v", err)
+		task := supervisor.Task{
+			Healthy: false,
+			Url:     url,
+		}
+		cw.ParentWorker.Supervisor.WorkPool <- task
 		return
 	}
 	defer resp.Body.Close()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 )
 
 //This takes output from child workers as input
@@ -12,6 +13,8 @@ import (
 
 type Supervisor struct {
 	WorkPool  chan Task
+	BatchSize int
+	Timeout   time.Duration
 	ctx       context.Context
 	WaitGroup *sync.WaitGroup
 }
@@ -21,30 +24,51 @@ type Task struct {
 	Url     string
 }
 
-func NewSupervisor(ctx context.Context) *Supervisor {
+func NewSupervisor(ctx context.Context, batchSize int, Timeout time.Duration) *Supervisor {
 	return &Supervisor{
-		WorkPool:  make(chan Task),
+		WorkPool:  make(chan Task, batchSize),
 		ctx:       ctx,
+		BatchSize: batchSize,
+		Timeout:   Timeout,
 		WaitGroup: &sync.WaitGroup{},
 	}
 }
 
 func (s *Supervisor) Activate() {
-	//s.WaitGroup.Add(1)
+	buffer := make([]Task, 0, s.BatchSize)
+	ticker := time.NewTicker(s.Timeout)
+	fmt.Printf("Ticker on supervisor activate \n")
+
 	go func() {
 		for {
 			select {
 			case <-s.ctx.Done():
 				return
 			case task := <-s.WorkPool:
-				fmt.Printf("supervisor picked up new task %v", task.Url)
-				if task.Healthy {
-					fmt.Printf("%v is healthy, pushing to timescale DB", task.Url)
-				} else {
-					fmt.Printf("%v is unhealthy, pushing to timescale DB and dispatching downtime notification event", task.Url)
+				fmt.Printf("one task added to the supervisor %v\n", task.Url)
+				buffer = append(buffer, task)
+				if len(buffer) >= s.BatchSize {
+					s.flush(buffer)
+					buffer = buffer[:0]
+				}
+			case <-ticker.C:
+				fmt.Printf("Ticker on supervisor ticked \n")
+				if len(buffer) > 0 {
+					s.flush(buffer)
+					buffer = buffer[:0]
 				}
 			}
 		}
 	}()
+}
 
+func (s *Supervisor) flush(buffer []Task) {
+	for _, task := range buffer {
+		fmt.Printf("supervisor picked up new task %v\n", task.Url)
+		if task.Healthy {
+			fmt.Printf("%v is healthy, pushing to timescale DB", task.Url)
+		} else {
+			fmt.Printf("%v is unhealthy, pushing to timescale DB and dispatching downtime notification event\n", task.Url)
+		}
+	}
 }

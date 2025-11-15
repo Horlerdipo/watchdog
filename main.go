@@ -31,14 +31,14 @@ func main() {
 	newOrchestrator := orchestrator.NewOrchestrator(ctx, redisClient)
 	newOrchestrator.Supervisor.Activate()
 	intervals := []int{
-		10,    // 10 seconds
-		30,    // 30 seconds
-		60,    // 1 minute
-		300,   // 5 minutes
-		1800,  // 30 minutes
-		3600,  // 1 hour
-		43200, // 12 hours
-		86400, // 24 hours
+		10, // 10 seconds
+		//30,    // 30 seconds
+		//60,    // 1 minute
+		//300,   // 5 minutes
+		//1800,  // 30 minutes
+		//3600,  // 1 hour
+		//43200, // 12 hours
+		//86400, // 24 hours
 	}
 
 	//for _, interval := range intervals {

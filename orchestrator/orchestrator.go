@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"github.com/horlerdipo/watchdog/env"
 	"github.com/horlerdipo/watchdog/supervisor"
 	"github.com/horlerdipo/watchdog/worker"
 	"github.com/redis/go-redis/v9"
@@ -20,7 +21,12 @@ type Orchestrator struct {
 }
 
 func NewOrchestrator(ctx context.Context, rdC *redis.Client) *Orchestrator {
-	newSupervisor := supervisor.NewSupervisor(ctx)
+	newSupervisor := supervisor.NewSupervisor(
+		ctx,
+		env.FetchInt("SUPERVISOR_POOL_FLUSH_BATCHSIZE", 100),
+		time.Duration(env.FetchInt("SUPERVISOR_POOL_FLUSH_TIMEOUT", 5))*time.Second,
+	)
+
 	return &Orchestrator{
 		intervals:   make(map[int]*worker.ParentWorker),
 		ctx:         ctx,
