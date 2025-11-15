@@ -82,11 +82,12 @@ func (pw *ParentWorker) spawnChildWorkers(maxChildWorkers int) {
 		pw.ChildWorkerPoolWaitGroup.Add(1)
 		child := NewChildWorker(
 			pw.Ctx,
+			i+1,
 			&pw.ChildWorkerPoolMutex,
 			&pw.ChildWorkerPoolWaitGroup,
 			pw.WorkPool,
 			pw.listName,
 		)
-		go child.Start(i)
+		go child.Start()
 	}
 }
