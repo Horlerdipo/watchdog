@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/horlerdipo/watchdog/env"
+	"github.com/horlerdipo/watchdog/supervisor"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"sync"
@@ -15,19 +16,19 @@ type ParentWorker struct {
 	listName                 string
 	Ctx                      context.Context
 	WorkPool                 chan []string
-	ChildWorkerPoolMutex     sync.Mutex
 	ChildWorkerPoolWaitGroup sync.WaitGroup
+	Supervisor               *supervisor.Supervisor
 }
 
-func NewParentWorker(ctx context.Context, redisClient *redis.Client, listName string) *ParentWorker {
+func NewParentWorker(ctx context.Context, redisClient *redis.Client, listName string, supervisor *supervisor.Supervisor) *ParentWorker {
 	return &ParentWorker{
 		Ctx:                      ctx,
 		RedisClient:              redisClient,
 		listName:                 listName,
 		Signal:                   make(chan bool),
 		WorkPool:                 make(chan []string),
-		ChildWorkerPoolMutex:     sync.Mutex{},
 		ChildWorkerPoolWaitGroup: sync.WaitGroup{},
+		Supervisor:               supervisor,
 	}
 }
 
@@ -83,10 +84,7 @@ func (pw *ParentWorker) spawnChildWorkers(maxChildWorkers int) {
 		child := NewChildWorker(
 			pw.Ctx,
 			i+1,
-			&pw.ChildWorkerPoolMutex,
-			&pw.ChildWorkerPoolWaitGroup,
-			pw.WorkPool,
-			pw.listName,
+			pw,
 		)
 		go child.Start()
 	}

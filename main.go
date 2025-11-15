@@ -29,6 +29,7 @@ func main() {
 
 	redisClient.Set(ctx, "key", "value", 0)
 	newOrchestrator := orchestrator.NewOrchestrator(ctx, redisClient)
+	newOrchestrator.Supervisor.Activate()
 	intervals := []int{
 		10,    // 10 seconds
 		30,    // 30 seconds

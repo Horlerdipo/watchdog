@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"github.com/horlerdipo/watchdog/supervisor"
 	"github.com/horlerdipo/watchdog/worker"
 	"github.com/redis/go-redis/v9"
 	"sync"
@@ -15,13 +16,16 @@ type Orchestrator struct {
 	ctx         context.Context
 	waitGroup   sync.WaitGroup
 	RedisClient *redis.Client
+	Supervisor  *supervisor.Supervisor
 }
 
 func NewOrchestrator(ctx context.Context, rdC *redis.Client) *Orchestrator {
+	newSupervisor := supervisor.NewSupervisor(ctx)
 	return &Orchestrator{
 		intervals:   make(map[int]*worker.ParentWorker),
 		ctx:         ctx,
 		RedisClient: rdC,
+		Supervisor:  newSupervisor,
 	}
 }
 
@@ -60,7 +64,7 @@ func (o *Orchestrator) AddInterval(interval int, worker *worker.ParentWorker) {
 
 func (o *Orchestrator) AddIntervals(intervals []int) {
 	for _, interval := range intervals {
-		workerGroup := worker.NewParentWorker(o.ctx, o.RedisClient, o.FormatRedisList(interval))
+		workerGroup := worker.NewParentWorker(o.ctx, o.RedisClient, o.FormatRedisList(interval), o.Supervisor)
 		workerGroup.Start()
 		o.AddInterval(interval, workerGroup)
 	}
