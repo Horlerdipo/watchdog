@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/horlerdipo/watchdog/enums"
 	"github.com/horlerdipo/watchdog/env"
 	"github.com/horlerdipo/watchdog/orchestrator"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"time"
 )
@@ -27,11 +29,29 @@ func main() {
 		panic(fmt.Sprintf("Redis connection failed: %v", err))
 	}
 
-	redisClient.Set(ctx, "key", "value", 0)
-	newOrchestrator := orchestrator.NewOrchestrator(ctx, redisClient)
+	pool := initiateDB(ctx)
+	initiateOrchestrator(ctx, redisClient, pool)
+	fmt.Println("Watchdog is running")
+}
+
+func initiateDB(ctx context.Context) *pgxpool.Pool {
+	pool, err := pgxpool.New(ctx, fmt.Sprintf("postgres://%v:%v@%v:%v/%v", env.FetchString("DB_USER"), env.FetchString("DB_PASSWORD"), env.FetchString("DB_HOST"), env.FetchString("DB_PORT"), env.FetchString("DB_DATABASE")))
+	if err != nil {
+		panic(fmt.Sprintf("pgxpool connection failed: %v", err))
+	}
+	if err := pool.Ping(ctx); err != nil {
+		panic(fmt.Sprintf("Unable to ping database: %v", err))
+	}
+
+	fmt.Println("Connected to PostgreSQL database!")
+	return pool
+}
+
+func initiateOrchestrator(ctx context.Context, redisClient *redis.Client, pool *pgxpool.Pool) {
+	newOrchestrator := orchestrator.NewOrchestrator(ctx, redisClient, pool)
 	newOrchestrator.Supervisor.Activate()
-	intervals := []int{
-		10, // 10 seconds
+	intervals := []enums.MonitoringFrequency{
+		enums.TenSeconds, // 10 seconds
 		//30,    // 30 seconds
 		//60,    // 1 minute
 		//300,   // 5 minutes
@@ -48,5 +68,4 @@ func main() {
 	newOrchestrator.AddIntervals(intervals)
 	fmt.Println(newOrchestrator.Intervals())
 	newOrchestrator.Start()
-	fmt.Println("Watchdog is running")
 }
