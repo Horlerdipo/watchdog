@@ -3,26 +3,31 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"github.com/horlerdipo/watchdog/worker"
+	"github.com/redis/go-redis/v9"
 	"sync"
 	"time"
 )
 
 type Orchestrator struct {
-	intervals []int
-	mutex     sync.RWMutex
-	ctx       context.Context
-	waitGroup sync.WaitGroup
+	intervals   map[int]*worker.ParentWorker
+	mutex       sync.RWMutex
+	ctx         context.Context
+	waitGroup   sync.WaitGroup
+	RedisClient *redis.Client
 }
 
-func NewOrchestrator(ctx context.Context) *Orchestrator {
+func NewOrchestrator(ctx context.Context, rdC *redis.Client) *Orchestrator {
 	return &Orchestrator{
-		ctx: ctx,
+		intervals:   make(map[int]*worker.ParentWorker),
+		ctx:         ctx,
+		RedisClient: rdC,
 	}
 }
 
 func (o *Orchestrator) Start() {
 	fmt.Println("Orchestrator is running")
-	for _, interval := range o.intervals {
+	for interval, parentWorker := range o.intervals {
 		ticker := time.NewTicker(time.Duration(interval) * time.Second)
 		o.waitGroup.Add(1)
 		go func() {
@@ -30,6 +35,7 @@ func (o *Orchestrator) Start() {
 				select {
 				case <-ticker.C:
 					fmt.Printf("tick for %v \n", interval)
+					parentWorker.Signal <- true
 				case <-o.ctx.Done():
 					fmt.Println("Orchestrator is stopped")
 					ticker.Stop()
@@ -42,20 +48,30 @@ func (o *Orchestrator) Start() {
 	o.waitGroup.Wait()
 }
 
-func (o *Orchestrator) AddInterval(interval int) {
+func (o *Orchestrator) FormatRedisList(interval int) string {
+	return fmt.Sprintf("urls_to_monitor:%v", interval)
+}
+
+func (o *Orchestrator) AddInterval(interval int, worker *worker.ParentWorker) {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
-	o.intervals = append(o.intervals, interval)
+	o.intervals[interval] = worker
 }
 
 func (o *Orchestrator) AddIntervals(intervals []int) {
 	for _, interval := range intervals {
-		o.AddInterval(interval)
+		workerGroup := worker.NewParentWorker(o.ctx, o.RedisClient, o.FormatRedisList(interval))
+		workerGroup.Start()
+		o.AddInterval(interval, workerGroup)
 	}
 }
 
 func (o *Orchestrator) Intervals() []int {
-	return o.intervals
+	var intervals []int
+	for interval, _ := range o.intervals {
+		intervals = append(intervals, interval)
+	}
+	return intervals
 }
 
 func (o *Orchestrator) Stop() {}
