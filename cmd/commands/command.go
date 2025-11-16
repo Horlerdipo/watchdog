@@ -5,11 +5,9 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-var AvailableCommands = map[string]Command{}
-
 type Command interface {
 	Name() string
-	Action(ctx context.Context, cmd *cli.Command) error
+	Action(ctx context.Context, cmd CommandContext) error
 	Aliases() []string
 	Usage() string
 }
@@ -24,8 +22,8 @@ func (cc *CommandContainer) Register(command Command) {
 }
 
 func (cc *CommandContainer) RegisterAll() {
-	guardCommand := NewGuardCommand()
-	cc.Register(guardCommand)
+	cc.Register(NewGuardCommand())
+	cc.Register(NewAddCommand())
 }
 
 func (cc *CommandContainer) Initiate() []*cli.Command {
@@ -36,8 +34,38 @@ func (cc *CommandContainer) Initiate() []*cli.Command {
 			Name:    command.Name(),
 			Usage:   command.Usage(),
 			Aliases: command.Aliases(),
-			Action:  command.Action,
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				wrapped := &UrfaveContext{cmd: cmd}
+				return command.Action(ctx, wrapped)
+			},
 		})
 	}
 	return commands
+}
+
+type CommandContext interface {
+	String(name string) string
+	Int(name string) int
+	Bool(name string) bool
+	Args() []string
+}
+
+type UrfaveContext struct {
+	cmd *cli.Command
+}
+
+func (u *UrfaveContext) String(name string) string {
+	return u.cmd.String(name)
+}
+
+func (u *UrfaveContext) Int(name string) int {
+	return u.cmd.Int(name)
+}
+
+func (u *UrfaveContext) Bool(name string) bool {
+	return u.cmd.Bool(name)
+}
+
+func (u *UrfaveContext) Args() []string {
+	return u.cmd.Args().Slice()
 }

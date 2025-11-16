@@ -8,7 +8,6 @@ import (
 	"github.com/horlerdipo/watchdog/orchestrator"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"github.com/urfave/cli/v3"
 	"time"
 )
 
@@ -19,7 +18,7 @@ func (mc GuardCommand) Name() string {
 	return "guard"
 }
 
-func (mc GuardCommand) Action(ctx context.Context, cmd *cli.Command) error {
+func (mc GuardCommand) Action(ctx context.Context, cmd CommandContext) error {
 	Init(ctx)
 	return nil
 }
