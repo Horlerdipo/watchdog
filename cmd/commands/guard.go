@@ -1,4 +1,4 @@
-package main
+package commands
 
 import (
 	"context"
@@ -8,10 +8,35 @@ import (
 	"github.com/horlerdipo/watchdog/orchestrator"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/urfave/cli/v3"
 	"time"
 )
 
-func main() {
+type GuardCommand struct {
+}
+
+func (mc GuardCommand) Name() string {
+	return "guard"
+}
+
+func (mc GuardCommand) Action(ctx context.Context, cmd *cli.Command) error {
+	Init(ctx)
+	return nil
+}
+
+func (mc GuardCommand) Aliases() []string {
+	return []string{"g"}
+}
+
+func (mc GuardCommand) Usage() string {
+	return "Start the watchdog monitoring process."
+}
+
+func NewGuardCommand() *GuardCommand {
+	return &GuardCommand{}
+}
+
+func Init(ctx context.Context) {
 	env.LoadEnv(".env")
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:         env.FetchString("REDIS_HOST"),
@@ -23,8 +48,7 @@ func main() {
 		MinIdleConns: 5,
 		MaxRetries:   3,
 	})
-	ctx := context.Background()
-	ctx = context.WithoutCancel(ctx)
+
 	if err := redisClient.Ping(ctx).Err(); err != nil {
 		panic(fmt.Sprintf("Redis connection failed: %v", err))
 	}
@@ -61,11 +85,6 @@ func initiateOrchestrator(ctx context.Context, redisClient *redis.Client, pool *
 		//86400, // 24 hours
 	}
 
-	//for _, interval := range intervals {
-	//	redisClient.LPush(ctx, fmt.Sprintf("urls_to_monitor:%v", interval), "https://google.com")
-	//}
-
 	newOrchestrator.AddIntervals(intervals)
-	fmt.Println(newOrchestrator.Intervals())
 	newOrchestrator.Start()
 }

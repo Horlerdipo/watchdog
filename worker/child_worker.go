@@ -25,11 +25,9 @@ func NewChildWorker(ctx context.Context, id int, parentWorker *ParentWorker) *Ch
 
 func (cw *ChildWorker) Start() {
 	defer cw.ParentWorker.ChildWorkerPoolWaitGroup.Done()
-	fmt.Printf("Child Worker %d with parent %v started and waiting for tasks\n", cw.Id, cw.ParentWorker.listName)
 	for {
 		select {
 		case <-cw.Ctx.Done():
-			fmt.Printf("Child Worker %d with parent %v shutting down\n", cw.Id, cw.ParentWorker.listName)
 			return
 
 		case urls, ok := <-cw.ParentWorker.WorkPool:
@@ -52,6 +50,7 @@ func (cw *ChildWorker) Work(url string) {
 	client := &http.Client{
 		Timeout: time.Duration(env.FetchInt("HTTP_REQUEST_TIMEOUT", 5)) * time.Second,
 	}
+	//todo: make the Method be fetched depending on the redis input
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		fmt.Println(err)

@@ -51,7 +51,6 @@ func (pw *ParentWorker) Start() {
 }
 
 func (pw *ParentWorker) Work() {
-	fmt.Println("Parent worker is running")
 	urlLength, err := pw.RedisClient.LLen(pw.Ctx, pw.listName).Result()
 	if err != nil {
 		log.Println(err)

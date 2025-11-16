@@ -37,7 +37,6 @@ func NewSupervisor(ctx context.Context, batchSize int, Timeout time.Duration) *S
 func (s *Supervisor) Activate() {
 	buffer := make([]Task, 0, s.BatchSize)
 	ticker := time.NewTicker(s.Timeout)
-	fmt.Printf("Ticker on supervisor activate \n")
 
 	go func() {
 		for {
@@ -45,14 +44,12 @@ func (s *Supervisor) Activate() {
 			case <-s.ctx.Done():
 				return
 			case task := <-s.WorkPool:
-				fmt.Printf("one task added to the supervisor %v\n", task.Url)
 				buffer = append(buffer, task)
 				if len(buffer) >= s.BatchSize {
 					s.flush(buffer)
 					buffer = buffer[:0]
 				}
 			case <-ticker.C:
-				fmt.Printf("Ticker on supervisor ticked \n")
 				if len(buffer) > 0 {
 					s.flush(buffer)
 					buffer = buffer[:0]
@@ -66,9 +63,9 @@ func (s *Supervisor) flush(buffer []Task) {
 	for _, task := range buffer {
 		fmt.Printf("supervisor picked up new task %v\n", task.Url)
 		if task.Healthy {
-			fmt.Printf("%v is healthy, pushing to timescale DB", task.Url)
+			fmt.Printf("%v is healthy, pushing to timescale DB \n", task.Url)
 		} else {
-			fmt.Printf("%v is unhealthy, pushing to timescale DB and dispatching downtime notification event\n", task.Url)
+			fmt.Printf("%v is unhealthy, pushing to timescale DB and dispatching downtime notification event \n", task.Url)
 		}
 	}
 }
