@@ -33,6 +33,10 @@ func (mc *RemoveCommand) Arguments() []ArgumentContext {
 	}
 }
 
+func (mc *RemoveCommand) Flags() []FlagContext {
+	return []FlagContext{}
+}
+
 func (mc *RemoveCommand) Action(ctx context.Context, cmd CommandContext) error {
 	id := cmd.Int("id")
 

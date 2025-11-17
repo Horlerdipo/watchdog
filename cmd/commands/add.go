@@ -14,6 +14,47 @@ func (mc *AddCommand) Name() string {
 	return "add"
 }
 
+func (mc *AddCommand) Aliases() []string {
+	return []string{"a"}
+}
+
+func (mc *AddCommand) Usage() string {
+	return "Add a URL to the watchdog monitoring process."
+}
+
+func (mc *AddCommand) Arguments() []ArgumentContext {
+	return []ArgumentContext{
+		{
+			Name:    "url",
+			Usage:   "The URL of the watchdog monitoring process.",
+			Type:    enums.String,
+			Default: "",
+		},
+		{
+			Name:    "http_method",
+			Usage:   "The HTTP method that URL will be called with. Options are: get,post,patch,put,delete",
+			Type:    enums.String,
+			Default: "get",
+		},
+		{
+			Name:    "frequency",
+			Usage:   "The Frequency the URL will be called. Options are: ten_seconds,thirty_seconds,five_minutes,thirty_minutes,one_hour,twelve_hours,twenty_four_hours",
+			Type:    enums.String,
+			Default: "five_minutes",
+		},
+		{
+			Name:    "contact_email",
+			Usage:   "The email an alert will be sent to if the URL is unreachable.",
+			Type:    enums.String,
+			Default: "",
+		},
+	}
+}
+
+func (mc *AddCommand) Flags() []FlagContext {
+	return []FlagContext{}
+}
+
 func (mc *AddCommand) Action(ctx context.Context, cmd CommandContext) error {
 	//add it to db
 	url := cmd.String("url")
@@ -75,43 +116,6 @@ func (mc *AddCommand) Action(ctx context.Context, cmd CommandContext) error {
 
 	fmt.Printf("URL successfully added, ID: %v", id)
 	return nil
-}
-
-func (mc *AddCommand) Aliases() []string {
-	return []string{"a"}
-}
-
-func (mc *AddCommand) Usage() string {
-	return "Add a URL to the watchdog monitoring process."
-}
-
-func (mc *AddCommand) Arguments() []ArgumentContext {
-	return []ArgumentContext{
-		{
-			Name:    "url",
-			Usage:   "The URL of the watchdog monitoring process.",
-			Type:    enums.String,
-			Default: "",
-		},
-		{
-			Name:    "http_method",
-			Usage:   "The HTTP method that URL will be called with. Options are: get,post,patch,put,delete",
-			Type:    enums.String,
-			Default: "get",
-		},
-		{
-			Name:    "frequency",
-			Usage:   "The Frequency the URL will be called. Options are: ten_seconds,thirty_seconds,five_minutes,thirty_minutes,one_hour,twelve_hours,twenty_four_hours",
-			Type:    enums.String,
-			Default: "five_minutes",
-		},
-		{
-			Name:    "contact_email",
-			Usage:   "The email an alert will be sent to if the URL is unreachable.",
-			Type:    enums.String,
-			Default: "",
-		},
-	}
 }
 
 func NewAddCommand() *AddCommand {

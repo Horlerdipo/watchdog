@@ -14,17 +14,8 @@ import (
 type GuardCommand struct {
 }
 
-func (mc *GuardCommand) Arguments() []ArgumentContext {
-	return []ArgumentContext{}
-}
-
 func (mc *GuardCommand) Name() string {
 	return "guard"
-}
-
-func (mc *GuardCommand) Action(ctx context.Context, cmd CommandContext) error {
-	Init(ctx)
-	return nil
 }
 
 func (mc *GuardCommand) Aliases() []string {
@@ -33,6 +24,19 @@ func (mc *GuardCommand) Aliases() []string {
 
 func (mc *GuardCommand) Usage() string {
 	return "Start the watchdog monitoring process."
+}
+
+func (mc *GuardCommand) Arguments() []ArgumentContext {
+	return []ArgumentContext{}
+}
+
+func (mc *GuardCommand) Flags() []FlagContext {
+	return []FlagContext{}
+}
+
+func (mc *GuardCommand) Action(ctx context.Context, cmd CommandContext) error {
+	Init(ctx)
+	return nil
 }
 
 func NewGuardCommand() *GuardCommand {

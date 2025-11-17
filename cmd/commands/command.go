@@ -16,6 +16,7 @@ type Command interface {
 	Aliases() []string
 	Usage() string
 	Arguments() []ArgumentContext
+	Flags() []FlagContext
 }
 
 type CommandContainer struct {
@@ -31,6 +32,7 @@ func (cc *CommandContainer) RegisterAll() {
 	cc.Register(NewGuardCommand())
 	cc.Register(NewAddCommand())
 	cc.Register(NewRemoveCommand())
+	cc.Register(NewListCommand())
 }
 
 func (cc *CommandContainer) Initiate() []*cli.Command {
@@ -38,6 +40,7 @@ func (cc *CommandContainer) Initiate() []*cli.Command {
 	var commands []*cli.Command
 	for _, command := range cc.Commands {
 		var arguments []cli.Argument
+		var flags []cli.Flag
 
 		for _, argument := range command.Arguments() {
 			var transformedArgument cli.Argument
@@ -55,6 +58,24 @@ func (cc *CommandContainer) Initiate() []*cli.Command {
 			arguments = append(arguments, transformedArgument)
 		}
 
+		for _, flag := range command.Flags() {
+			var transformedFlag cli.Flag
+			if flag.Type == enums.Int {
+				transformedFlag = &cli.IntFlag{
+					Name:  flag.Name,
+					Usage: flag.Usage,
+					Value: flag.Default.(int),
+				}
+			} else {
+				transformedFlag = &cli.StringFlag{
+					Name:  flag.Name,
+					Usage: flag.Usage,
+					Value: flag.Default.(string),
+				}
+			}
+			flags = append(flags, transformedFlag)
+		}
+
 		commands = append(commands, &cli.Command{
 			Name:    command.Name(),
 			Usage:   command.Usage(),
@@ -64,6 +85,7 @@ func (cc *CommandContainer) Initiate() []*cli.Command {
 				return command.Action(ctx, wrapped)
 			},
 			Arguments: arguments,
+			Flags:     flags,
 		})
 	}
 	return commands
@@ -72,11 +94,20 @@ func (cc *CommandContainer) Initiate() []*cli.Command {
 type CommandContext interface {
 	String(name string) string
 	Int(name string) int
-	Bool(name string) bool
 	Args() []string
+	BoolFlag(name string) bool
+	IntFlag(name string) int
+	StringFlag(name string) string
 }
 
 type ArgumentContext struct {
+	Name    string
+	Usage   string
+	Type    enums.ArgumentType
+	Default interface{}
+}
+
+type FlagContext struct {
 	Name    string
 	Usage   string
 	Type    enums.ArgumentType
@@ -94,12 +125,20 @@ func (u *UrfaveContext) Int(name string) int {
 	return u.cmd.IntArg(name)
 }
 
-func (u *UrfaveContext) Bool(name string) bool {
+func (u *UrfaveContext) Args() []string {
+	return u.cmd.Args().Slice()
+}
+
+func (u *UrfaveContext) BoolFlag(name string) bool {
 	return u.cmd.Bool(name)
 }
 
-func (u *UrfaveContext) Args() []string {
-	return u.cmd.Args().Slice()
+func (u *UrfaveContext) StringFlag(name string) string {
+	return u.cmd.String(name)
+}
+
+func (u *UrfaveContext) IntFlag(name string) int {
+	return u.cmd.Int(name)
 }
 
 func RefreshRedisInterval(ctx context.Context, redisClient *redis.Client, pool *pgxpool.Pool, frequency enums.MonitoringFrequency) error {
