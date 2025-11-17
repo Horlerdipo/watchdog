@@ -30,6 +30,7 @@ func (cc *CommandContainer) Register(command Command) {
 func (cc *CommandContainer) RegisterAll() {
 	cc.Register(NewGuardCommand())
 	cc.Register(NewAddCommand())
+	cc.Register(NewRemoveCommand())
 }
 
 func (cc *CommandContainer) Initiate() []*cli.Command {
@@ -37,38 +38,18 @@ func (cc *CommandContainer) Initiate() []*cli.Command {
 	var commands []*cli.Command
 	for _, command := range cc.Commands {
 		var arguments []cli.Argument
-		//arguments := []cli.Argument{
-		//	&cli.StringArg{
-		//		Name:      "url",
-		//		UsageText: "The URL of the watchdog monitoring process.",
-		//	},
-		//	&cli.StringArg{
-		//		Name:      "http_method",
-		//		Value:     "get",
-		//		UsageText: "The HTTP method that URL will be called with. Options are: get,post,patch,put,delete",
-		//	},
-		//	&cli.StringArg{
-		//		Name:      "frequency",
-		//		Value:     "five_minutes",
-		//		UsageText: "The Frequency the URL will be called. Options are: ten_seconds,thirty_seconds,five_minutes,thirty_minutes,one_hour,twelve_hours,twenty_four_hours",
-		//	},
-		//	&cli.StringArg{
-		//		Name:      "contact_email",
-		//		UsageText: "The email an alert will be sent to if the URL is unreachable.",
-		//	},
-		//}
 
 		for _, argument := range command.Arguments() {
 			var transformedArgument cli.Argument
 			if argument.Type == enums.Int {
 				transformedArgument = &cli.IntArg{
 					Name:      argument.Name,
-					UsageText: "The email an alert will be sent to if the URL is unreachable.",
+					UsageText: argument.Usage,
 				}
 			} else {
 				transformedArgument = &cli.StringArg{
 					Name:      argument.Name,
-					UsageText: "The email an alert will be sent to if the URL is unreachable.",
+					UsageText: argument.Usage,
 				}
 			}
 			arguments = append(arguments, transformedArgument)

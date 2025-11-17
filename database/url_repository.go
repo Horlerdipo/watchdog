@@ -22,6 +22,7 @@ type UrlRepository interface {
 	FetchAll(ctx context.Context, limit int, offset int, filter UrlQueryFilter) ([]Url, error)
 	Add(ctx context.Context, url string, httpMethod enums.HttpMethod, frequency enums.MonitoringFrequency, contactEmail string) (int, error)
 	Delete(ctx context.Context, Id int) error
+	FindById(ctx context.Context, Id int) (Url, error)
 }
 type urlRepository struct {
 	pool *pgxpool.Pool
@@ -121,6 +122,48 @@ func (ur urlRepository) Add(ctx context.Context, url string, httpMethod enums.Ht
 		return 0, err
 	}
 	return id, nil
+}
+
+func (ur urlRepository) FindById(ctx context.Context, id int) (Url, error) {
+	sql := "SELECT id,url,http_method,contact_email,status,monitoring_frequency,created_at,updated_at FROM urls WHERE ID=$1"
+	var url Url
+	var monitoringFrequency string
+	var status string
+	var httpMethod string
+	err := ur.pool.QueryRow(ctx, sql, id).Scan(
+		&url.Id,
+		&url.Url,
+		&httpMethod,
+		&url.ContactEmail,
+		&status,
+		&monitoringFrequency,
+		&url.CreatedAt,
+		&url.UpdatedAt,
+	)
+
+	if err != nil {
+		return url, err
+	}
+	parsedMonitoringFrequency, err := enums.ParseMonitoringFrequency(monitoringFrequency)
+	if err != nil {
+		return Url{}, err
+	}
+
+	parsedStatus, err := enums.ParseSiteHealth(status)
+	if err != nil {
+		return Url{}, err
+	}
+
+	parsedHttpMethod, err := enums.ParseHttpMethod(httpMethod)
+	if err != nil {
+		return Url{}, err
+	}
+
+	url.MonitoringFrequency = parsedMonitoringFrequency
+	url.Status = parsedStatus
+	url.HttpMethod = parsedHttpMethod
+
+	return url, nil
 }
 
 func (ur urlRepository) Delete(ctx context.Context, Id int) error {
