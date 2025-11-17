@@ -66,7 +66,7 @@ func (o *Orchestrator) Start() {
 	o.waitGroup.Wait()
 }
 
-func (o *Orchestrator) FormatRedisList(interval int) string {
+func FormatRedisList(interval int) string {
 	return fmt.Sprintf("urls_to_monitor:%v", interval)
 }
 
@@ -78,7 +78,7 @@ func (o *Orchestrator) AddInterval(interval enums.MonitoringFrequency, worker *w
 
 func (o *Orchestrator) AddIntervals(intervals []enums.MonitoringFrequency) {
 	for _, interval := range intervals {
-		workerGroup := worker.NewParentWorker(o.ctx, o.RedisClient, o.FormatRedisList(interval.ToSeconds()), o.Supervisor)
+		workerGroup := worker.NewParentWorker(o.ctx, o.RedisClient, FormatRedisList(interval.ToSeconds()), o.Supervisor)
 		workerGroup.Start()
 		o.AddInterval(interval, workerGroup)
 	}
@@ -95,16 +95,16 @@ func (o *Orchestrator) Intervals() []int {
 func (o *Orchestrator) Stop() {}
 
 func (o *Orchestrator) PrefillRedisList(ctx context.Context) {
-	urls, err := database.NewUrlRepository(o.DB).FetchAll(ctx, 10, 0)
+	urls, err := database.NewUrlRepository(o.DB).FetchAll(ctx, 10, 0, database.UrlQueryFilter{})
 	if err != nil {
 		panic(err)
 	}
 
 	for _, interval := range o.Intervals() {
-		o.RedisClient.Del(ctx, o.FormatRedisList(interval))
+		o.RedisClient.Del(ctx, FormatRedisList(interval))
 	}
 
 	for _, url := range urls {
-		o.RedisClient.LPush(ctx, o.FormatRedisList(url.MonitoringFrequency.ToSeconds()), url.Url)
+		o.RedisClient.LPush(ctx, FormatRedisList(url.MonitoringFrequency.ToSeconds()), url.Url)
 	}
 }

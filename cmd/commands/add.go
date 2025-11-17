@@ -66,9 +66,14 @@ func (mc *AddCommand) Action(ctx context.Context, cmd CommandContext) error {
 		return err
 	}
 
-	fmt.Printf("URL successfully added, ID: %v", id)
+	redisClient := InitiateRedis(ctx)
+	err = RefreshRedisInterval(ctx, redisClient, pool, parsedFrequency)
+	if err != nil {
+		fmt.Printf("Error adding url to redis: %v", err)
+		return err
+	}
 
-	//todo: trigger reentry into the redis list
+	fmt.Printf("URL successfully added, ID: %v", id)
 	return nil
 }
 

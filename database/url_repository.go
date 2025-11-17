@@ -5,19 +5,61 @@ import (
 	"fmt"
 	"github.com/horlerdipo/watchdog/enums"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"strings"
 )
 
+type UrlQueryFilter struct {
+	HttpMethod enums.HttpMethod
+	Status     enums.SiteHealth
+	Frequency  enums.MonitoringFrequency
+}
+
+func NewUrlQueryFilter() UrlQueryFilter {
+	return UrlQueryFilter{}
+}
+
 type UrlRepository interface {
-	FetchAll(ctx context.Context, limit int, offset int) ([]Url, error)
+	FetchAll(ctx context.Context, limit int, offset int, filter UrlQueryFilter) ([]Url, error)
 	Add(ctx context.Context, url string, httpMethod enums.HttpMethod, frequency enums.MonitoringFrequency, contactEmail string) (int, error)
+	Delete(ctx context.Context, Id int) error
 }
 type urlRepository struct {
 	pool *pgxpool.Pool
 }
 
-func (ur urlRepository) FetchAll(ctx context.Context, limit int, offset int) ([]Url, error) {
+func (ur urlRepository) FetchAll(ctx context.Context, limit int, offset int, filter UrlQueryFilter) ([]Url, error) {
 	sql := "SELECT id,url,http_method,contact_email,status,monitoring_frequency,created_at,updated_at FROM urls"
-	rows, err := ur.pool.Query(ctx, sql)
+
+	var whereClauses []string
+	var args []interface{}
+	argPosition := 1
+
+	if filter.HttpMethod != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("http_method = $%d", argPosition))
+		args = append(args, filter.HttpMethod.ToString())
+		argPosition++
+	}
+
+	if filter.Status != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("status = $%d", argPosition))
+		args = append(args, filter.Status.ToString())
+		argPosition++
+	}
+
+	if filter.Frequency != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("monitoring_frequency = $%d", argPosition))
+		args = append(args, filter.Frequency.ToString())
+		argPosition++
+	}
+
+	if len(whereClauses) > 0 {
+		sql += " WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	sql += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argPosition, argPosition+1)
+	args = append(args, limit, offset)
+
+	rows, err := ur.pool.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +121,15 @@ func (ur urlRepository) Add(ctx context.Context, url string, httpMethod enums.Ht
 		return 0, err
 	}
 	return id, nil
+}
+
+func (ur urlRepository) Delete(ctx context.Context, Id int) error {
+	sql := "DELETE FROM urls WHERE id=$1"
+	_, err := ur.pool.Exec(ctx, sql, Id)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func NewUrlRepository(pool *pgxpool.Pool) UrlRepository {

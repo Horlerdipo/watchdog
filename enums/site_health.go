@@ -13,6 +13,18 @@ const (
 	UnHealthy SiteHealth = "unhealthy"
 )
 
+func (sh SiteHealth) ToString() string {
+	switch sh {
+	case Pending:
+		return "pending"
+	case Healthy:
+		return "healthy"
+	case UnHealthy:
+		return "unhealthy"
+	default:
+		return ""
+	}
+}
 func ParseSiteHealth(s string) (SiteHealth, error) {
 	switch strings.ToLower(s) {
 	case "pending":

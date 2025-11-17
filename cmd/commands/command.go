@@ -2,7 +2,11 @@ package commands
 
 import (
 	"context"
+	"github.com/horlerdipo/watchdog/database"
 	"github.com/horlerdipo/watchdog/enums"
+	"github.com/horlerdipo/watchdog/orchestrator"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/urfave/cli/v3"
 )
 
@@ -115,4 +119,20 @@ func (u *UrfaveContext) Bool(name string) bool {
 
 func (u *UrfaveContext) Args() []string {
 	return u.cmd.Args().Slice()
+}
+
+func RefreshRedisInterval(ctx context.Context, redisClient *redis.Client, pool *pgxpool.Pool, frequency enums.MonitoringFrequency) error {
+	urls, err := database.NewUrlRepository(pool).FetchAll(ctx, 10, 0, database.UrlQueryFilter{
+		Frequency: frequency,
+	})
+	if err != nil {
+		return err
+	}
+
+	redisClient.Del(ctx, orchestrator.FormatRedisList(frequency.ToSeconds()))
+
+	for _, url := range urls {
+		redisClient.LPush(ctx, orchestrator.FormatRedisList(url.MonitoringFrequency.ToSeconds()), url.Url)
+	}
+	return nil
 }

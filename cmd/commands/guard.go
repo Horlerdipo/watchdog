@@ -40,6 +40,13 @@ func NewGuardCommand() *GuardCommand {
 }
 
 func Init(ctx context.Context) {
+	redisClient := InitiateRedis(ctx)
+	pool := InitiateDB(ctx)
+	initiateOrchestrator(ctx, redisClient, pool)
+	fmt.Println("Watchdog is running")
+}
+
+func InitiateRedis(ctx context.Context) *redis.Client {
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:         env.FetchString("REDIS_HOST"),
 		DB:           env.FetchInt("REDIS_DB"),
@@ -54,10 +61,7 @@ func Init(ctx context.Context) {
 	if err := redisClient.Ping(ctx).Err(); err != nil {
 		panic(fmt.Sprintf("Redis connection failed: %v", err))
 	}
-
-	pool := InitiateDB(ctx)
-	initiateOrchestrator(ctx, redisClient, pool)
-	fmt.Println("Watchdog is running")
+	return redisClient
 }
 
 func InitiateDB(ctx context.Context) *pgxpool.Pool {
