@@ -14,20 +14,24 @@ import (
 type GuardCommand struct {
 }
 
-func (mc GuardCommand) Name() string {
+func (mc *GuardCommand) Arguments() []ArgumentContext {
+	return []ArgumentContext{}
+}
+
+func (mc *GuardCommand) Name() string {
 	return "guard"
 }
 
-func (mc GuardCommand) Action(ctx context.Context, cmd CommandContext) error {
+func (mc *GuardCommand) Action(ctx context.Context, cmd CommandContext) error {
 	Init(ctx)
 	return nil
 }
 
-func (mc GuardCommand) Aliases() []string {
+func (mc *GuardCommand) Aliases() []string {
 	return []string{"g"}
 }
 
-func (mc GuardCommand) Usage() string {
+func (mc *GuardCommand) Usage() string {
 	return "Start the watchdog monitoring process."
 }
 
@@ -36,7 +40,6 @@ func NewGuardCommand() *GuardCommand {
 }
 
 func Init(ctx context.Context) {
-	env.LoadEnv(".env")
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:         env.FetchString("REDIS_HOST"),
 		DB:           env.FetchInt("REDIS_DB"),
@@ -52,12 +55,12 @@ func Init(ctx context.Context) {
 		panic(fmt.Sprintf("Redis connection failed: %v", err))
 	}
 
-	pool := initiateDB(ctx)
+	pool := InitiateDB(ctx)
 	initiateOrchestrator(ctx, redisClient, pool)
 	fmt.Println("Watchdog is running")
 }
 
-func initiateDB(ctx context.Context) *pgxpool.Pool {
+func InitiateDB(ctx context.Context) *pgxpool.Pool {
 	pool, err := pgxpool.New(ctx, fmt.Sprintf("postgres://%v:%v@%v:%v/%v", env.FetchString("DB_USER"), env.FetchString("DB_PASSWORD"), env.FetchString("DB_HOST"), env.FetchString("DB_PORT"), env.FetchString("DB_DATABASE")))
 	if err != nil {
 		panic(fmt.Sprintf("pgxpool connection failed: %v", err))

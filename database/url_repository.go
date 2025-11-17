@@ -9,13 +9,14 @@ import (
 
 type UrlRepository interface {
 	FetchAll(ctx context.Context, limit int, offset int) ([]Url, error)
+	Add(ctx context.Context, url string, httpMethod enums.HttpMethod, frequency enums.MonitoringFrequency, contactEmail string) (int, error)
 }
 type urlRepository struct {
 	pool *pgxpool.Pool
 }
 
 func (ur urlRepository) FetchAll(ctx context.Context, limit int, offset int) ([]Url, error) {
-	sql := "SELECT id,url,http_method,status,monitoring_frequency,created_at,updated_at FROM urls"
+	sql := "SELECT id,url,http_method,contact_email,status,monitoring_frequency,created_at,updated_at FROM urls"
 	rows, err := ur.pool.Query(ctx, sql)
 	if err != nil {
 		return nil, err
@@ -33,6 +34,7 @@ func (ur urlRepository) FetchAll(ctx context.Context, limit int, offset int) ([]
 			&url.Id,
 			&url.Url,
 			&httpMethod,
+			&url.ContactEmail,
 			&status,
 			&monitoringFrequency,
 			&url.CreatedAt,
@@ -66,6 +68,17 @@ func (ur urlRepository) FetchAll(ctx context.Context, limit int, offset int) ([]
 		}
 	}
 	return urls, nil
+}
+
+func (ur urlRepository) Add(ctx context.Context, url string, httpMethod enums.HttpMethod, frequency enums.MonitoringFrequency, contactEmail string) (int, error) {
+	sql := "INSERT INTO urls (url,http_method,contact_email,status,monitoring_frequency) VALUES ($1,$2,$3,$4,$5) RETURNING id"
+
+	var id int
+	err := ur.pool.QueryRow(ctx, sql, url, httpMethod, contactEmail, enums.Pending, frequency).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 func NewUrlRepository(pool *pgxpool.Pool) UrlRepository {

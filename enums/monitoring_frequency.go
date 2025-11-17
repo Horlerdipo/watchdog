@@ -9,7 +9,7 @@ const (
 	ThirtySeconds   MonitoringFrequency = "thirty_seconds"
 	OneMinute       MonitoringFrequency = "one_minute"
 	FiveMinutes     MonitoringFrequency = "five_minutes"
-	ThirtyMinute    MonitoringFrequency = "thirty_minutes"
+	ThirtyMinutes   MonitoringFrequency = "thirty_minutes"
 	OneHour         MonitoringFrequency = "one_hour"
 	TwelveHours     MonitoringFrequency = "twelve_hours"
 	TwentyFourHours MonitoringFrequency = "twenty_four_hours"
@@ -25,7 +25,7 @@ func (m MonitoringFrequency) ToSeconds() int {
 		return 60
 	case FiveMinutes:
 		return 300
-	case ThirtyMinute:
+	case ThirtyMinutes:
 		return 1800
 	case OneHour:
 		return 3600
@@ -35,6 +35,29 @@ func (m MonitoringFrequency) ToSeconds() int {
 		return 86400
 	default:
 		return -1 // or panic/error
+	}
+}
+
+func (m MonitoringFrequency) ToString() string {
+	switch m {
+	case TenSeconds:
+		return "ten_seconds"
+	case ThirtySeconds:
+		return "thirty_seconds"
+	case OneMinute:
+		return "one_minute"
+	case FiveMinutes:
+		return "five_minutes"
+	case ThirtyMinutes:
+		return "thirty_minutes"
+	case OneHour:
+		return "one_hour"
+	case TwelveHours:
+		return "twelve_hours"
+	case TwentyFourHours:
+		return "twenty_four_hours"
+	default:
+		return "" // or panic/error
 	}
 }
 
@@ -49,7 +72,7 @@ func ParseMonitoringFrequency(s string) (MonitoringFrequency, error) {
 	case "five_minutes":
 		return FiveMinutes, nil
 	case "thirty_minutes":
-		return ThirtyMinute, nil
+		return ThirtyMinutes, nil
 	case "one_hour":
 		return OneHour, nil
 	case "twelve_hours":

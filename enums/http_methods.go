@@ -34,6 +34,24 @@ func (hm HttpMethod) ToMethod() string {
 	}
 }
 
+func (hm HttpMethod) ToString() string {
+	switch hm {
+	case Get:
+		return "get"
+	case Post:
+		return "post"
+	case Patch:
+
+		return "patch"
+	case Put:
+		return "put"
+	case Delete:
+		return "delete"
+	default:
+		return ""
+	}
+}
+
 func ParseHttpMethod(s string) (HttpMethod, error) {
 	switch strings.ToLower(s) {
 	case "get":

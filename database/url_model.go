@@ -11,6 +11,7 @@ type Url struct {
 	HttpMethod          enums.HttpMethod
 	Status              enums.SiteHealth
 	MonitoringFrequency enums.MonitoringFrequency
+	ContactEmail        string
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
