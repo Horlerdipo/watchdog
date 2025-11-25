@@ -5,26 +5,12 @@ import (
 	"fmt"
 	"github.com/horlerdipo/watchdog/database"
 	"github.com/horlerdipo/watchdog/enums"
+	"log/slog"
 	"strings"
 )
 
 type ListCommand struct {
-}
-
-func (mc *ListCommand) Name() string {
-	return "list"
-}
-
-func (mc *ListCommand) Aliases() []string {
-	return []string{"r"}
-}
-
-func (mc *ListCommand) Usage() string {
-	return "List the URLs the watchdog is guarding."
-}
-
-func (mc *ListCommand) Arguments() []ArgumentContext {
-	return []ArgumentContext{}
+	*BaseCommand
 }
 
 func (mc *ListCommand) Flags() []FlagContext {
@@ -106,7 +92,7 @@ func (mc *ListCommand) Action(ctx context.Context, cmd CommandContext) error {
 		filter.Status = parsedStatus
 	}
 
-	pool := InitiateDB(ctx)
+	pool := InitiateDB(ctx, mc.Log)
 	urlRepository := database.NewUrlRepository(pool)
 
 	urls, err := urlRepository.FetchAll(ctx, perPage+1, offset, filter)
@@ -131,8 +117,15 @@ func (mc *ListCommand) Action(ctx context.Context, cmd CommandContext) error {
 	return nil
 }
 
-func NewListCommand() *ListCommand {
-	return &ListCommand{}
+func NewListCommand(logger *slog.Logger) *ListCommand {
+	return &ListCommand{
+		BaseCommand: &BaseCommand{
+			name:    "list",
+			aliases: []string{"ls"},
+			usage:   "List the URLs the watchdog is guarding.",
+			Log:     logger,
+		},
+	}
 }
 
 func DisplayUrls(urls []database.Url, page int, offset int, hasPrevious bool, hasMore bool) {

@@ -5,21 +5,11 @@ import (
 	"fmt"
 	"github.com/horlerdipo/watchdog/database"
 	"github.com/horlerdipo/watchdog/enums"
+	"log/slog"
 )
 
 type RemoveCommand struct {
-}
-
-func (mc *RemoveCommand) Name() string {
-	return "remove"
-}
-
-func (mc *RemoveCommand) Aliases() []string {
-	return []string{"r"}
-}
-
-func (mc *RemoveCommand) Usage() string {
-	return "Remove a URL from the watchdog monitoring process."
+	*BaseCommand
 }
 
 func (mc *RemoveCommand) Arguments() []ArgumentContext {
@@ -45,7 +35,7 @@ func (mc *RemoveCommand) Action(ctx context.Context, cmd CommandContext) error {
 		return fmt.Errorf("ID is required")
 	}
 
-	pool := InitiateDB(ctx)
+	pool := InitiateDB(ctx, mc.Log)
 	urlRepository := database.NewUrlRepository(pool)
 
 	url, err := urlRepository.FindById(ctx, id)
@@ -61,7 +51,7 @@ func (mc *RemoveCommand) Action(ctx context.Context, cmd CommandContext) error {
 		return err
 	}
 
-	redisClient := InitiateRedis(ctx)
+	redisClient := InitiateRedis(ctx, mc.Log)
 	err = RefreshRedisInterval(ctx, redisClient, pool, url.MonitoringFrequency)
 	if err != nil {
 		fmt.Printf("Error removing url from redis: %v", err)
@@ -72,6 +62,13 @@ func (mc *RemoveCommand) Action(ctx context.Context, cmd CommandContext) error {
 	return nil
 }
 
-func NewRemoveCommand() *RemoveCommand {
-	return &RemoveCommand{}
+func NewRemoveCommand(logger *slog.Logger) *RemoveCommand {
+	return &RemoveCommand{
+		BaseCommand: &BaseCommand{
+			name:    "remove",
+			aliases: []string{"rm"},
+			usage:   "Remove a URL from the watchdog monitoring process.",
+			Log:     logger,
+		},
+	}
 }

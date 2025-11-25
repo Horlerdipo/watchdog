@@ -5,21 +5,11 @@ import (
 	"fmt"
 	"github.com/horlerdipo/watchdog/database"
 	"github.com/horlerdipo/watchdog/enums"
+	"log/slog"
 )
 
 type AddCommand struct {
-}
-
-func (mc *AddCommand) Name() string {
-	return "add"
-}
-
-func (mc *AddCommand) Aliases() []string {
-	return []string{"a"}
-}
-
-func (mc *AddCommand) Usage() string {
-	return "Add a URL to the watchdog monitoring process."
+	*BaseCommand
 }
 
 func (mc *AddCommand) Arguments() []ArgumentContext {
@@ -56,7 +46,6 @@ func (mc *AddCommand) Flags() []FlagContext {
 }
 
 func (mc *AddCommand) Action(ctx context.Context, cmd CommandContext) error {
-	//add it to db
 	url := cmd.String("url")
 	httpMethod := cmd.String("http_method")
 	frequency := cmd.String("frequency")
@@ -79,7 +68,7 @@ func (mc *AddCommand) Action(ctx context.Context, cmd CommandContext) error {
 		frequency = enums.FiveMinutes.ToString()
 	}
 
-	pool := InitiateDB(ctx)
+	pool := InitiateDB(ctx, mc.Log)
 	urlRepository := database.NewUrlRepository(pool)
 
 	parsedHttpMethod, err := enums.ParseHttpMethod(cmd.String("http_method"))
@@ -103,14 +92,16 @@ func (mc *AddCommand) Action(ctx context.Context, cmd CommandContext) error {
 	)
 
 	if err != nil {
-		fmt.Printf("Error adding url: %v", err)
+		mc.Log.Error("Error adding URL", err)
+		fmt.Printf("Error adding url")
 		return err
 	}
 
-	redisClient := InitiateRedis(ctx)
+	redisClient := InitiateRedis(ctx, mc.Log)
 	err = RefreshRedisInterval(ctx, redisClient, pool, parsedFrequency)
 	if err != nil {
-		fmt.Printf("Error adding url to redis: %v", err)
+		mc.Log.Error("Error adding url to redis", err)
+		fmt.Printf("Error adding url to redis")
 		return err
 	}
 
@@ -118,6 +109,13 @@ func (mc *AddCommand) Action(ctx context.Context, cmd CommandContext) error {
 	return nil
 }
 
-func NewAddCommand() *AddCommand {
-	return &AddCommand{}
+func NewAddCommand(logger *slog.Logger) *AddCommand {
+	return &AddCommand{
+		BaseCommand: &BaseCommand{
+			name:    "add",
+			aliases: []string{"a"},
+			usage:   "Add a URL to the watchdog monitoring process.",
+			Log:     logger,
+		},
+	}
 }

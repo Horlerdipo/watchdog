@@ -2,12 +2,13 @@ package commands
 
 import (
 	"context"
+	"github.com/horlerdipo/watchdog/core"
 	"github.com/horlerdipo/watchdog/database"
 	"github.com/horlerdipo/watchdog/enums"
-	"github.com/horlerdipo/watchdog/orchestrator"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/urfave/cli/v3"
+	"log/slog"
 )
 
 type Command interface {
@@ -28,15 +29,15 @@ func (cc *CommandContainer) Register(command Command) {
 	return
 }
 
-func (cc *CommandContainer) RegisterAll() {
-	cc.Register(NewGuardCommand())
-	cc.Register(NewAddCommand())
-	cc.Register(NewRemoveCommand())
-	cc.Register(NewListCommand())
+func (cc *CommandContainer) RegisterAll(logger *slog.Logger) {
+	cc.Register(NewGuardCommand(logger))
+	cc.Register(NewAddCommand(logger))
+	cc.Register(NewRemoveCommand(logger))
+	cc.Register(NewListCommand(logger))
 }
 
-func (cc *CommandContainer) Initiate() []*cli.Command {
-	cc.RegisterAll()
+func (cc *CommandContainer) Initiate(logger *slog.Logger) []*cli.Command {
+	cc.RegisterAll(logger)
 	var commands []*cli.Command
 	for _, command := range cc.Commands {
 		var arguments []cli.Argument
@@ -141,6 +142,21 @@ func (u *UrfaveContext) IntFlag(name string) int {
 	return u.cmd.Int(name)
 }
 
+type BaseCommand struct {
+	name    string
+	aliases []string
+	usage   string
+	args    []ArgumentContext
+	flags   []FlagContext
+	Log     *slog.Logger
+}
+
+func (b *BaseCommand) Name() string                 { return b.name }
+func (b *BaseCommand) Aliases() []string            { return b.aliases }
+func (b *BaseCommand) Usage() string                { return b.usage }
+func (b *BaseCommand) Arguments() []ArgumentContext { return b.args }
+func (b *BaseCommand) Flags() []FlagContext         { return b.flags }
+
 func RefreshRedisInterval(ctx context.Context, redisClient *redis.Client, pool *pgxpool.Pool, frequency enums.MonitoringFrequency) error {
 	urls, err := database.NewUrlRepository(pool).FetchAll(ctx, 10, 0, database.UrlQueryFilter{
 		Frequency: frequency,
@@ -149,10 +165,10 @@ func RefreshRedisInterval(ctx context.Context, redisClient *redis.Client, pool *
 		return err
 	}
 
-	redisClient.Del(ctx, orchestrator.FormatRedisList(frequency.ToSeconds()))
+	redisClient.Del(ctx, core.FormatRedisList(frequency.ToSeconds()))
 
 	for _, url := range urls {
-		redisClient.LPush(ctx, orchestrator.FormatRedisList(url.MonitoringFrequency.ToSeconds()), url.Url)
+		redisClient.LPush(ctx, core.FormatRedisList(url.MonitoringFrequency.ToSeconds()), url.Url)
 	}
 	return nil
 }

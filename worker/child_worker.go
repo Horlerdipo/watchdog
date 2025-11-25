@@ -3,6 +3,8 @@ package worker
 import (
 	"context"
 	"fmt"
+	"github.com/horlerdipo/watchdog/core"
+	"github.com/horlerdipo/watchdog/database"
 	"github.com/horlerdipo/watchdog/env"
 	"github.com/horlerdipo/watchdog/supervisor"
 	"net/http"
@@ -30,28 +32,39 @@ func (cw *ChildWorker) Start() {
 		case <-cw.Ctx.Done():
 			return
 
-		case urls, ok := <-cw.ParentWorker.WorkPool:
+		case urlIds, ok := <-cw.ParentWorker.WorkPool:
 			if !ok {
-				fmt.Printf("Worker %d: WorkPool with parent %v closed, shutting down\n", cw.Id, cw.ParentWorker.listName)
+				fmt.Printf("Worker %d: WorkPool with parent %v interval closed, shutting down\n", cw.Id, cw.ParentWorker.Interval)
 				return
 			}
-			fmt.Printf("Worker %d with parent %v picked up chunk of %d URLs\n", cw.Id, cw.ParentWorker.listName, len(urls))
+			fmt.Printf("Worker %d with parent %v interval picked up chunk of %d URLs\n", cw.Id, cw.ParentWorker.Interval, len(urlIds))
 
-			for _, url := range urls {
-				fmt.Printf("Worker %d with parent %v processing: %s\n", cw.Id, cw.ParentWorker.listName, url)
-				cw.Work(url)
+			for _, urlId := range urlIds {
+				fmt.Printf("Worker %d with parent %v interval processing: %s\n", cw.Id, cw.ParentWorker.Interval, urlId)
+				cw.Work(urlId)
 			}
-			fmt.Printf("Worker %d with parent %v completed chunk\n", cw.Id, cw.ParentWorker.listName)
+			fmt.Printf("Worker %d with parent %v interval completed chunk\n", cw.Id, cw.ParentWorker.Interval)
 		}
 	}
 }
 
-func (cw *ChildWorker) Work(url string) {
+func (cw *ChildWorker) Work(urlId string) {
 	client := &http.Client{
 		Timeout: time.Duration(env.FetchInt("HTTP_REQUEST_TIMEOUT", 5)) * time.Second,
 	}
+	var url database.Url
+	val, err := cw.ParentWorker.RedisClient.HGet(cw.Ctx, core.FormatRedisHash(cw.ParentWorker.Interval), urlId).Bytes()
+	if err != nil {
+		panic(err)
+	}
+
+	err = url.UnmarshalBinary(val)
+	if err != nil {
+		return
+	}
+
 	//todo: make the Method be fetched depending on the redis input
-	request, err := http.NewRequest(http.MethodGet, url, nil)
+	request, err := http.NewRequest(url.HttpMethod.ToMethod(), url.Url, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -62,16 +75,16 @@ func (cw *ChildWorker) Work(url string) {
 		fmt.Printf("client error: %v", err)
 		task := supervisor.Task{
 			Healthy: false,
-			Url:     url,
+			Url:     url.Url,
 		}
 		cw.ParentWorker.Supervisor.WorkPool <- task
 		return
 	}
 	defer resp.Body.Close()
-	fmt.Printf("Worker %d with parent %v tried monitoring %v and returned %v \n", cw.Id, cw.ParentWorker.listName, url, resp.StatusCode)
+	fmt.Printf("Worker %d with parent %v interval tried monitoring %v and returned %v \n", cw.Id, cw.ParentWorker.Interval, url, resp.StatusCode)
 	task := supervisor.Task{
 		Healthy: resp.StatusCode > 199 && resp.StatusCode < 300,
-		Url:     url,
+		Url:     url.Url,
 	}
 
 	cw.ParentWorker.Supervisor.WorkPool <- task

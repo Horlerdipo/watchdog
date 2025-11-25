@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"github.com/horlerdipo/watchdog/core"
 	"github.com/horlerdipo/watchdog/database"
 	"github.com/horlerdipo/watchdog/enums"
 	"github.com/horlerdipo/watchdog/env"
@@ -10,6 +11,7 @@ import (
 	"github.com/horlerdipo/watchdog/worker"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -23,6 +25,7 @@ type Orchestrator struct {
 	Supervisor    *supervisor.Supervisor
 	DB            *pgxpool.Pool
 	UrlRepository database.UrlRepository
+	Logger        *slog.Logger
 }
 
 func NewOrchestrator(ctx context.Context, rdC *redis.Client, pool *pgxpool.Pool) *Orchestrator {
@@ -66,10 +69,6 @@ func (o *Orchestrator) Start() {
 	o.waitGroup.Wait()
 }
 
-func FormatRedisList(interval int) string {
-	return fmt.Sprintf("urls_to_monitor:%v", interval)
-}
-
 func (o *Orchestrator) AddInterval(interval enums.MonitoringFrequency, worker *worker.ParentWorker) {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
@@ -78,7 +77,7 @@ func (o *Orchestrator) AddInterval(interval enums.MonitoringFrequency, worker *w
 
 func (o *Orchestrator) AddIntervals(intervals []enums.MonitoringFrequency) {
 	for _, interval := range intervals {
-		workerGroup := worker.NewParentWorker(o.ctx, o.RedisClient, FormatRedisList(interval.ToSeconds()), o.Supervisor)
+		workerGroup := worker.NewParentWorker(o.ctx, o.RedisClient, interval.ToSeconds(), o.Supervisor)
 		workerGroup.Start()
 		o.AddInterval(interval, workerGroup)
 	}
@@ -101,10 +100,11 @@ func (o *Orchestrator) PrefillRedisList(ctx context.Context) {
 	}
 
 	for _, interval := range o.Intervals() {
-		o.RedisClient.Del(ctx, FormatRedisList(interval))
+		o.RedisClient.Del(ctx, core.FormatRedisList(interval))
 	}
 
 	for _, url := range urls {
-		o.RedisClient.LPush(ctx, FormatRedisList(url.MonitoringFrequency.ToSeconds()), url.Url)
+		o.RedisClient.LPush(ctx, core.FormatRedisList(url.MonitoringFrequency.ToSeconds()), url.Id)
+		o.RedisClient.HSet(ctx, core.FormatRedisHash(url.MonitoringFrequency.ToSeconds()))
 	}
 }

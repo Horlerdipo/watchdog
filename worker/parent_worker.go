@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"github.com/horlerdipo/watchdog/core"
 	"github.com/horlerdipo/watchdog/env"
 	"github.com/horlerdipo/watchdog/supervisor"
 	"github.com/redis/go-redis/v9"
@@ -13,18 +14,18 @@ import (
 type ParentWorker struct {
 	RedisClient              *redis.Client
 	Signal                   chan bool
-	listName                 string
+	Interval                 int
 	Ctx                      context.Context
 	WorkPool                 chan []string
 	ChildWorkerPoolWaitGroup sync.WaitGroup
 	Supervisor               *supervisor.Supervisor
 }
 
-func NewParentWorker(ctx context.Context, redisClient *redis.Client, listName string, supervisor *supervisor.Supervisor) *ParentWorker {
+func NewParentWorker(ctx context.Context, redisClient *redis.Client, interval int, supervisor *supervisor.Supervisor) *ParentWorker {
 	return &ParentWorker{
 		Ctx:                      ctx,
 		RedisClient:              redisClient,
-		listName:                 listName,
+		Interval:                 interval,
 		Signal:                   make(chan bool),
 		WorkPool:                 make(chan []string),
 		ChildWorkerPoolWaitGroup: sync.WaitGroup{},
@@ -51,7 +52,7 @@ func (pw *ParentWorker) Start() {
 }
 
 func (pw *ParentWorker) Work() {
-	urlLength, err := pw.RedisClient.LLen(pw.Ctx, pw.listName).Result()
+	urlLength, err := pw.RedisClient.LLen(pw.Ctx, core.FormatRedisList(pw.Interval)).Result()
 	if err != nil {
 		log.Println(err)
 		return
@@ -61,19 +62,19 @@ func (pw *ParentWorker) Work() {
 		return
 	}
 
-	//fetch all the url in Redis
-	urls, err := pw.RedisClient.LRange(pw.Ctx, pw.listName, 0, urlLength).Result()
-	fmt.Println(urls)
+	//fetch all the ids in Redis
+	urlIds, err := pw.RedisClient.LRange(pw.Ctx, core.FormatRedisList(pw.Interval), 0, urlLength).Result()
+	fmt.Println(urlIds)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	maxPoolSize := env.FetchInt("MAXIMUM_WORK_POOL_SIZE")
-	if len(urls) <= maxPoolSize {
-		pw.WorkPool <- urls
+	if len(urlIds) <= maxPoolSize {
+		pw.WorkPool <- urlIds
 		return
 	}
-	pw.WorkPool <- urls
+	pw.WorkPool <- urlIds
 	return
 }
 

@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/joho/godotenv v1.5.1
+	github.com/lmittmann/tint v1.1.2
 	github.com/redis/go-redis/v9 v9.16.0
 	github.com/urfave/cli/v3 v3.6.0
 )
