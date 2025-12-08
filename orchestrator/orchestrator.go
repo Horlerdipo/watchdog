@@ -34,7 +34,7 @@ type Orchestrator struct {
 func NewOrchestrator(ctx context.Context, rdC *redis.Client, pool *pgxpool.Pool) *Orchestrator {
 	newLogger := logger.New()
 	newEventBus := core.NewEventBus(newLogger)
-	newEventBus.Subscribe("ping.successful", listeners.NewPingSuccessfulListener())
+	newEventBus.Subscribe("ping.successful", listeners.NewPingSuccessfulListener(ctx, newLogger, pool))
 
 	newSupervisor := supervisor.NewSupervisor(
 		ctx,

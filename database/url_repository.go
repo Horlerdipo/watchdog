@@ -23,6 +23,7 @@ type UrlRepository interface {
 	Add(ctx context.Context, url string, httpMethod enums.HttpMethod, frequency enums.MonitoringFrequency, contactEmail string) (int, error)
 	Delete(ctx context.Context, Id int) error
 	FindById(ctx context.Context, Id int) (Url, error)
+	UpdateStatus(ctx context.Context, Id int, status enums.SiteHealth) error
 }
 type urlRepository struct {
 	pool *pgxpool.Pool
@@ -169,6 +170,15 @@ func (ur urlRepository) FindById(ctx context.Context, id int) (Url, error) {
 func (ur urlRepository) Delete(ctx context.Context, Id int) error {
 	sql := "DELETE FROM urls WHERE id=$1"
 	_, err := ur.pool.Exec(ctx, sql, Id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ur urlRepository) UpdateStatus(ctx context.Context, Id int, status enums.SiteHealth) error {
+	sql := "UPDATE urls SET status=$1 WHERE id=$2"
+	_, err := ur.pool.Exec(ctx, sql, status, Id)
 	if err != nil {
 		return err
 	}

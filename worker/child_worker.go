@@ -84,6 +84,7 @@ func (cw *ChildWorker) Work(urlId string) {
 	defer resp.Body.Close()
 	fmt.Printf("Worker %d with parent %v interval tried monitoring %v and returned %v \n", cw.Id, cw.ParentWorker.Interval, url, resp.StatusCode)
 	task := supervisor.Task{
+		UrlId:   url.Id,
 		Healthy: resp.StatusCode > 199 && resp.StatusCode < 300,
 		Url:     url.Url,
 	}
