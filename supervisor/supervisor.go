@@ -3,6 +3,9 @@ package supervisor
 import (
 	"context"
 	"fmt"
+	"github.com/horlerdipo/watchdog/core"
+	"github.com/horlerdipo/watchdog/events"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"sync"
 	"time"
 )
@@ -17,21 +20,14 @@ type Supervisor struct {
 	Timeout   time.Duration
 	ctx       context.Context
 	WaitGroup *sync.WaitGroup
+	EventBus  core.EventBus
+	DB        *pgxpool.Pool
 }
 
 type Task struct {
 	Healthy bool
 	Url     string
-}
-
-func NewSupervisor(ctx context.Context, batchSize int, Timeout time.Duration) *Supervisor {
-	return &Supervisor{
-		WorkPool:  make(chan Task, batchSize),
-		ctx:       ctx,
-		BatchSize: batchSize,
-		Timeout:   Timeout,
-		WaitGroup: &sync.WaitGroup{},
-	}
+	UrlId   int
 }
 
 func (s *Supervisor) Activate() {
@@ -63,9 +59,25 @@ func (s *Supervisor) flush(buffer []Task) {
 	for _, task := range buffer {
 		fmt.Printf("supervisor picked up new task %v\n", task.Url)
 		if task.Healthy {
-			fmt.Printf("%v is healthy, pushing to timescale DB \n", task.Url)
+			s.EventBus.Dispatch(&events.PingSuccessful{
+				UrlId:   task.UrlId,
+				Healthy: task.Healthy,
+				Url:     task.Url,
+			})
 		} else {
 			fmt.Printf("%v is unhealthy, pushing to timescale DB and dispatching downtime notification event \n", task.Url)
 		}
+	}
+}
+
+func NewSupervisor(ctx context.Context, batchSize int, Timeout time.Duration, eventBus core.EventBus, db *pgxpool.Pool) *Supervisor {
+	return &Supervisor{
+		WorkPool:  make(chan Task, batchSize),
+		ctx:       ctx,
+		BatchSize: batchSize,
+		Timeout:   Timeout,
+		WaitGroup: &sync.WaitGroup{},
+		EventBus:  eventBus,
+		DB:        db,
 	}
 }

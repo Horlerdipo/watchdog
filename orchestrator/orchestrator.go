@@ -7,6 +7,8 @@ import (
 	"github.com/horlerdipo/watchdog/database"
 	"github.com/horlerdipo/watchdog/enums"
 	"github.com/horlerdipo/watchdog/env"
+	"github.com/horlerdipo/watchdog/events/listeners"
+	"github.com/horlerdipo/watchdog/logger"
 	"github.com/horlerdipo/watchdog/supervisor"
 	"github.com/horlerdipo/watchdog/worker"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,13 +28,20 @@ type Orchestrator struct {
 	DB            *pgxpool.Pool
 	UrlRepository database.UrlRepository
 	Logger        *slog.Logger
+	EventBus      *core.EventBus
 }
 
 func NewOrchestrator(ctx context.Context, rdC *redis.Client, pool *pgxpool.Pool) *Orchestrator {
+	newLogger := logger.New()
+	newEventBus := core.NewEventBus(newLogger)
+	newEventBus.Subscribe("ping.successful", listeners.NewPingSuccessfulListener())
+
 	newSupervisor := supervisor.NewSupervisor(
 		ctx,
 		env.FetchInt("SUPERVISOR_POOL_FLUSH_BATCHSIZE", 100),
 		time.Duration(env.FetchInt("SUPERVISOR_POOL_FLUSH_TIMEOUT", 5))*time.Second,
+		newEventBus,
+		pool,
 	)
 
 	return &Orchestrator{
@@ -42,6 +51,8 @@ func NewOrchestrator(ctx context.Context, rdC *redis.Client, pool *pgxpool.Pool)
 		Supervisor:    newSupervisor,
 		DB:            pool,
 		UrlRepository: database.NewUrlRepository(pool),
+		Logger:        newLogger,
+		EventBus:      &newEventBus,
 	}
 }
 
@@ -105,6 +116,6 @@ func (o *Orchestrator) PrefillRedisList(ctx context.Context) {
 
 	for _, url := range urls {
 		o.RedisClient.LPush(ctx, core.FormatRedisList(url.MonitoringFrequency.ToSeconds()), url.Id)
-		o.RedisClient.HSet(ctx, core.FormatRedisHash(url.MonitoringFrequency.ToSeconds()))
+		o.RedisClient.HSet(ctx, core.FormatRedisHash(url.MonitoringFrequency.ToSeconds()), url.Id, url)
 	}
 }

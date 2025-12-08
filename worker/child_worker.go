@@ -55,7 +55,8 @@ func (cw *ChildWorker) Work(urlId string) {
 	var url database.Url
 	val, err := cw.ParentWorker.RedisClient.HGet(cw.Ctx, core.FormatRedisHash(cw.ParentWorker.Interval), urlId).Bytes()
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 
 	err = url.UnmarshalBinary(val)
@@ -63,7 +64,6 @@ func (cw *ChildWorker) Work(urlId string) {
 		return
 	}
 
-	//todo: make the Method be fetched depending on the redis input
 	request, err := http.NewRequest(url.HttpMethod.ToMethod(), url.Url, nil)
 	if err != nil {
 		fmt.Println(err)
@@ -76,6 +76,7 @@ func (cw *ChildWorker) Work(urlId string) {
 		task := supervisor.Task{
 			Healthy: false,
 			Url:     url.Url,
+			UrlId:   url.Id,
 		}
 		cw.ParentWorker.Supervisor.WorkPool <- task
 		return

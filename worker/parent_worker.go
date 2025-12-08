@@ -21,18 +21,6 @@ type ParentWorker struct {
 	Supervisor               *supervisor.Supervisor
 }
 
-func NewParentWorker(ctx context.Context, redisClient *redis.Client, interval int, supervisor *supervisor.Supervisor) *ParentWorker {
-	return &ParentWorker{
-		Ctx:                      ctx,
-		RedisClient:              redisClient,
-		Interval:                 interval,
-		Signal:                   make(chan bool),
-		WorkPool:                 make(chan []string),
-		ChildWorkerPoolWaitGroup: sync.WaitGroup{},
-		Supervisor:               supervisor,
-	}
-}
-
 func (pw *ParentWorker) Start() {
 	maxChildWorkers := env.FetchInt("MAXIMUM_CHILD_WORKERS")
 	if maxChildWorkers < 1 {
@@ -70,11 +58,14 @@ func (pw *ParentWorker) Work() {
 		return
 	}
 	maxPoolSize := env.FetchInt("MAXIMUM_WORK_POOL_SIZE")
-	if len(urlIds) <= maxPoolSize {
-		pw.WorkPool <- urlIds
-		return
+	for i := 0; i < len(urlIds); i += maxPoolSize {
+		end := i + maxPoolSize
+		if end > len(urlIds) {
+			end = len(urlIds)
+		}
+		chunk := urlIds[i:end]
+		pw.WorkPool <- chunk
 	}
-	pw.WorkPool <- urlIds
 	return
 }
 
@@ -87,5 +78,18 @@ func (pw *ParentWorker) spawnChildWorkers(maxChildWorkers int) {
 			pw,
 		)
 		go child.Start()
+	}
+}
+
+func NewParentWorker(ctx context.Context, redisClient *redis.Client, interval int, supervisor *supervisor.Supervisor) *ParentWorker {
+	bufferSize := env.FetchInt("MAXIMUM_WORK_POOL_SIZE")
+	return &ParentWorker{
+		Ctx:                      ctx,
+		RedisClient:              redisClient,
+		Interval:                 interval,
+		Signal:                   make(chan bool),
+		WorkPool:                 make(chan []string, bufferSize),
+		ChildWorkerPoolWaitGroup: sync.WaitGroup{},
+		Supervisor:               supervisor,
 	}
 }
