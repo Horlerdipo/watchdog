@@ -65,7 +65,11 @@ func (s *Supervisor) flush(buffer []Task) {
 				Url:     task.Url,
 			})
 		} else {
-			fmt.Printf("%v is unhealthy, pushing to timescale DB and dispatching downtime notification event \n", task.Url)
+			s.EventBus.Dispatch(&events.PingUnSuccessful{
+				UrlId:   task.UrlId,
+				Healthy: task.Healthy,
+				Url:     task.Url,
+			})
 		}
 	}
 }
