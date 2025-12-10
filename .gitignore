@@ -30,8 +30,9 @@ go.work.sum
 /bin
 /tmp
 # Editor/IDE
- .idea/
 *.iml
+/.idea
+
 
 # Binaries
 /dist/

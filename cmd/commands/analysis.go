@@ -33,7 +33,7 @@ func NewAnalysisCommand(logger *slog.Logger) *AnalysisCommand {
 	return &AnalysisCommand{
 		BaseCommand: &BaseCommand{
 			name:    "analysis",
-			aliases: []string{"a"},
+			aliases: []string{"an"},
 			usage:   "Run analysis on any of the sites being monitored.",
 			Log:     logger,
 		},
