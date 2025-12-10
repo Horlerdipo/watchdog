@@ -140,7 +140,8 @@ func DisplayUrls(urls []database.Url, page int, offset int, hasPrevious bool, ha
 
 	for i, url := range urls {
 		fmt.Printf("%d. %s\n", offset+i+1, url.Url)
-		fmt.Printf("   Method: %s | Status: %s | Frequency: %s\n",
+		fmt.Printf("   ID: %v | Method: %s | Status: %s | Frequency: %s\n",
+			url.Id,
 			url.HttpMethod.ToString(),
 			url.Status.ToString(),
 			url.MonitoringFrequency.ToString())

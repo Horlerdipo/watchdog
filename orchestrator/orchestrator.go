@@ -67,7 +67,7 @@ func (o *Orchestrator) Start() {
 			for {
 				select {
 				case <-ticker.C:
-					fmt.Printf("tick for %v \n", interval)
+					//fmt.Printf("tick for %v \n", interval)
 					parentWorker.Signal <- true
 				case <-o.ctx.Done():
 					fmt.Println("Orchestrator is stopped")

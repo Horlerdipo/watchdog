@@ -34,6 +34,7 @@ func (cc *CommandContainer) RegisterAll(logger *slog.Logger) {
 	cc.Register(NewAddCommand(logger))
 	cc.Register(NewRemoveCommand(logger))
 	cc.Register(NewListCommand(logger))
+	cc.Register(NewAnalysisCommand(logger))
 }
 
 func (cc *CommandContainer) Initiate(logger *slog.Logger) []*cli.Command {

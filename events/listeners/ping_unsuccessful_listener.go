@@ -9,6 +9,7 @@ import (
 	"github.com/horlerdipo/watchdog/events"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log/slog"
+	"time"
 )
 
 type PingUnSuccessfulListener struct {
@@ -20,19 +21,36 @@ type PingUnSuccessfulListener struct {
 func (sl *PingUnSuccessfulListener) Handle(event core.Event) {
 	e := event.(*events.PingUnSuccessful)
 	fmt.Printf("%v is unhealthy, pushing to timescale DB and sending email out \n", e.Url)
-	urlStatusRepo := database.NewUrlStatusRepository(sl.DB)
-	err := urlStatusRepo.Add(sl.ctx, e.UrlId, e.Healthy)
+
+	urlRepo := database.NewUrlRepository(sl.DB)
+	url, err := urlRepo.FindById(sl.ctx, e.UrlId)
+	if err != nil {
+		sl.log.Error("Error finding url: ", err, e)
+		return
+	}
+
+	//check if the previous status is healthy, if it is healthy, send email
+	if url.Status == enums.Healthy {
+		err = core.SendEmail(core.SendEmailConfig{
+			Recipients:  []string{url.ContactEmail},
+			Subject:     "Your Site is DOWN",
+			Content:     fmt.Sprintf("Your Site `%v` is DOWN. It went down at %v\n . Please check it out", url.Url, time.Now()),
+			ContentType: "text/plain",
+		})
+		if err != nil {
+			sl.log.Error("Error sending monitoring alert email: ", err, e)
+		}
+	}
+
+	urlRepository := database.NewUrlRepository(sl.DB)
+	err = urlRepository.UpdateStatus(sl.ctx, e.UrlId, enums.UnHealthy)
 	if err != nil {
 		sl.log.Error(err.Error(), e)
 		return
 	}
 
-	siteHealth := enums.Healthy
-	if !e.Healthy {
-		siteHealth = enums.UnHealthy
-	}
-	urlRepository := database.NewUrlRepository(sl.DB)
-	err = urlRepository.UpdateStatus(sl.ctx, e.UrlId, siteHealth)
+	urlStatusRepo := database.NewUrlStatusRepository(sl.DB)
+	err = urlStatusRepo.Add(sl.ctx, e.UrlId, e.Healthy)
 	if err != nil {
 		sl.log.Error(err.Error(), e)
 		return
