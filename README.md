@@ -7,7 +7,6 @@
 - [Setup](#setup)
 - [Available Commands](#available-commands)
 - [Folder Structure](#folder-structure)
-- [Operational Notes & Best Practices](#operational-notes--best-practices)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -224,17 +223,8 @@ A high-level overview of the top-level folders in this repository and their resp
 - `worker/` — Worker implementations: parent/child worker groups responsible for scheduling and performing HTTP checks.
 - `migrations/` — SQL migration files for initializing and evolving the database schema and Timescale hypertables.
 
-
-## Operational Notes & Best Practices
-- Use connection pooling (`pgxpool`) and contexts for cancellation.
-- Consider wrapping time-series insert + metadata update in a transaction where atomicity is required.
-- Make email sending async or retryable to avoid blocking listeners.
-- Improve structured logging by attaching fields (url id, error) instead of raw `fmt` mixes.
-- Add unit tests for listeners and repositories; mock DB and email sender.
-
 ## Contributing
 - Fork, create a branch per feature/fix, open PR with clear description and tests.
-- Run `go test ./...` and ensure linting checks pass.
 
 ## License
-Specify the project license (e.g., MIT). Add a `LICENSE` file at the repository root.
+This project is licensed under the MIT License — see the `LICENSE` file in the repository root for the full text.
