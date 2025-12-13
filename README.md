@@ -25,7 +25,7 @@ The orchestrator is the main entry point and coordinator for the monitoring syst
 - The `Supervisor` determines whether a check represents a success or failure and publishes a corresponding event (e.g. `ping.successful`, `ping.unsuccessful`) on the event bus.
 - Registered listeners react to those events: they persist time-series measurements, update URL metadata, and trigger notifications (emails) on state transitions.
 
-This order ensures a clear separation of concerns: workers perform checks, the supervisor makes state decisions, and listeners handle persistence and notifications.
+This is done to ensure separation of concerns: workers perform checks, the supervisor makes state decisions, and listeners handle persistence and notifications.
 
 ### Components
 - Orchestrator: bootstraps the system, registers listeners, creates the `Supervisor`, and starts `ParentWorker` instances for each time interval.

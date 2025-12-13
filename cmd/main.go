@@ -26,7 +26,7 @@ func main() {
 		Commands: command.Initiate(newLogger),
 	}
 
-	if err := cmd.Run(context.Background(), os.Args); err != nil {
+	if err := cmd.Run(ctx, os.Args); err != nil {
 		log.Fatal(err)
 	}
 }
