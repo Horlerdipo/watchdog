@@ -6,7 +6,6 @@ import (
 )
 
 type UrlStatus struct {
-	Url    string    `json:"url"`
 	UrlId  int       `json:"url_id"`
 	Status bool      `json:"status"`
 	Time   time.Time `json:"time"`

@@ -169,7 +169,8 @@ func RefreshRedisInterval(ctx context.Context, redisClient *redis.Client, pool *
 	redisClient.Del(ctx, core.FormatRedisList(frequency.ToSeconds()))
 
 	for _, url := range urls {
-		redisClient.LPush(ctx, core.FormatRedisList(url.MonitoringFrequency.ToSeconds()), url.Url)
+		redisClient.LPush(ctx, core.FormatRedisList(url.MonitoringFrequency.ToSeconds()), url.Id)
+		redisClient.HSet(ctx, core.FormatRedisHash(url.MonitoringFrequency.ToSeconds()), url.Id, url)
 	}
 	return nil
 }
