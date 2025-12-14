@@ -13,9 +13,9 @@ import (
 )
 
 type PingSuccessfulListener struct {
-	ctx context.Context
-	log *slog.Logger
-	DB  *pgxpool.Pool
+	ctx    context.Context
+	logger *slog.Logger
+	DB     *pgxpool.Pool
 }
 
 func (sl *PingSuccessfulListener) Handle(event core.Event) {
@@ -24,11 +24,17 @@ func (sl *PingSuccessfulListener) Handle(event core.Event) {
 	urlRepo := database.NewUrlRepository(sl.DB)
 	url, err := urlRepo.FindById(sl.ctx, e.UrlId)
 	if err != nil {
-		sl.log.Error("Error finding url: ", err, e)
+		sl.logger.Error("Error finding url: ", err, e)
 		return
 	}
 
 	if url.Status == enums.UnHealthy {
+		incidentRepo := database.NewIncidentRepository(sl.DB)
+		err := incidentRepo.Resolve(sl.ctx, url.Id)
+		if err != nil {
+			sl.logger.Error("Unable to log incident as resolved: ", err.Error(), url)
+		}
+
 		err = core.SendEmail(core.SendEmailConfig{
 			Recipients:  []string{url.ContactEmail},
 			Subject:     "Your Site is now UP",
@@ -36,29 +42,29 @@ func (sl *PingSuccessfulListener) Handle(event core.Event) {
 			ContentType: "text/plain",
 		})
 		if err != nil {
-			sl.log.Error("Error sending monitoring alert email: ", err, e)
+			sl.logger.Error("Error sending monitoring alert email: ", err, e)
 		}
 	}
 
 	urlStatusRepo := database.NewUrlStatusRepository(sl.DB)
 	err = urlStatusRepo.Add(sl.ctx, e.UrlId, e.Healthy)
 	if err != nil {
-		sl.log.Error(err.Error(), e)
+		sl.logger.Error(err.Error(), e)
 		return
 	}
 
 	urlRepository := database.NewUrlRepository(sl.DB)
 	err = urlRepository.UpdateStatus(sl.ctx, e.UrlId, enums.Healthy)
 	if err != nil {
-		sl.log.Error(err.Error(), e)
+		sl.logger.Error(err.Error(), e)
 		return
 	}
 }
 
 func NewPingSuccessfulListener(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool) *PingSuccessfulListener {
 	return &PingSuccessfulListener{
-		log: logger,
-		ctx: ctx,
-		DB:  db,
+		logger: logger,
+		ctx:    ctx,
+		DB:     db,
 	}
 }

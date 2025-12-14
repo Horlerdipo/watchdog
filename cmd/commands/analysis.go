@@ -2,9 +2,11 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/horlerdipo/watchdog/database"
 	"github.com/horlerdipo/watchdog/enums"
+	"github.com/jackc/pgx/v5"
 	"log/slog"
 	"time"
 )
@@ -51,6 +53,7 @@ func Analysis(ctx context.Context, logger *slog.Logger, urlId int) {
 	defer db.Close()
 	urlRepository := database.NewUrlRepository(db)
 	urlStatusRepository := database.NewUrlStatusRepository(db)
+	incidentRepository := database.NewIncidentRepository(db)
 
 	url, err := urlRepository.FindById(ctx, urlId)
 	if err != nil {
@@ -79,6 +82,25 @@ func Analysis(ctx context.Context, logger *slog.Logger, urlId int) {
 		lastCheckTime = timeNow.Sub(lastCheckStatus.Time)
 		fmt.Printf("Last Checked: %v ago\n", lastCheckTime.Round(time.Second))
 	}
+
+	periods := []int{1, 7, 30, 365}
+	for _, days := range periods {
+		_, incidentCount, err := incidentRepository.Count(ctx, url.Id, days, enums.Day)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				incidentCount = 0
+			} else {
+				logger.Error("Unable to fetch incident count: "+err.Error(), url.Id)
+			}
+		}
+		var label string
+		if days == 1 {
+			label = "24 hours"
+		} else {
+			label = fmt.Sprintf("%d days", days)
+		}
+		fmt.Printf("Number of Incidents in the last %s: %d\n", label, incidentCount)
+	}
 }
 
 func getRecentDownTime(ctx context.Context, url *database.Url, urlStatusRepository database.UrlStatusRepository, logger *slog.Logger) time.Duration {
@@ -91,15 +113,13 @@ func getRecentDownTime(ctx context.Context, url *database.Url, urlStatusReposito
 	} else {
 		recentDownTimeUrlStatus, err = urlStatusRepository.GetRecentStatus(ctx, url.Id, true)
 	}
-	if err != nil {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		logger.Error("Unable to fetch most recent downtime: "+err.Error(), url.Id)
 	}
 
 	if recentDownTimeUrlStatus.UrlId == 0 {
-		logger.Info("No recent downtime found, calculating from creation time", url.Id)
 		return timeNow.Sub(url.CreatedAt)
 	} else {
-		logger.Info("Recent downtime found, calculating from creation time", recentDownTimeUrlStatus.Status)
 		return timeNow.Sub(recentDownTimeUrlStatus.Time)
 	}
 }
