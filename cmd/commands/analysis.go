@@ -68,6 +68,9 @@ func Analysis(ctx context.Context, logger *slog.Logger, urlId int) {
 		logger.Error("Unable to fetch last check status: "+err.Error(), url.Id)
 	}
 
+	fmt.Printf("URL: %s\n", url.Url)
+	fmt.Printf("HTTP Method: %s\n", url.HttpMethod)
+	fmt.Printf("Monitoring Frequency: %s\n", url.MonitoringFrequency)
 	fmt.Printf("Site Status: %s\n", url.Status)
 	switch url.Status {
 	case enums.Healthy:
@@ -80,7 +83,7 @@ func Analysis(ctx context.Context, logger *slog.Logger, urlId int) {
 
 	if lastCheckStatus.UrlId != 0 {
 		lastCheckTime = timeNow.Sub(lastCheckStatus.Time)
-		fmt.Printf("Last Checked: %v ago\n", lastCheckTime.Round(time.Second))
+		fmt.Printf("Last Checked: %v ago\n", (lastCheckTime.Abs()).Round(time.Second))
 	}
 
 	periods := []int{1, 7, 30, 365}
