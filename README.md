@@ -67,8 +67,8 @@ This is done to ensure separation of concerns: workers perform checks, the super
 ### Prerequisites
 - Go 1.XX installed
 - Postgres / TimescaleDB instance
-- (Optional) SMTP credentials for email notifications
-- `git`, `make` (if `Makefile` is present)
+- SMTP credentials for email notifications
+- Goose CLI installed (`go install github.com/pressly/goose/v3/cmd/goose@latest`)
 
 ### Environment Variables
 Copy `.env.example` to `.env` and edit values for your environment. The project expects the following variables (from `.env.example`):
